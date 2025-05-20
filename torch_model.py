@@ -7,6 +7,7 @@ import hydra
 from omegaconf import DictConfig, OmegaConf
 import os
 import pyvista as pv
+from matplotlib.colors import LinearSegmentedColormap
 
 #Decorator should go here
 class FFN(nn.Module):
@@ -179,7 +180,7 @@ class PNP():
         right_bc_loss = torch.mean((c_right - 2.0)**2) + torch.mean(u_right**2) #Combined BC loss on the right boundary for u and c
         
         # Middle boundary (x=1): u=10
-        x_mid = torch.ones(self.cfg.batch_size.BC, 1, device=self.device)
+        x_mid = torch.zeros(self.cfg.batch_size.BC, 1, device=self.device)
         y_mid = torch.rand(self.cfg.batch_size.BC, 1, device=self.device)
         inputs_mid = torch.cat([x_mid, y_mid], dim=1)
         u_mid = self.potential_net(inputs_mid)
@@ -293,7 +294,8 @@ class PNP():
                         self.visualize(step)
         
         # Final save
-        self.save_model("model_final")
+        print(f"Step {step}, Loss: {loss:.6f}, Poisson: {poisson_loss:.6f}, "f"Nernst: {nernst_loss:.6f}, BC: {bc_loss:.6f}")
+        self.save_model("outputs/checkpoints/model_final")
         self.visualize("final")
 
         
@@ -324,19 +326,35 @@ class PNP():
         with torch.no_grad():
             u = self.potential_net(xy).cpu().numpy().reshape(Y.shape[0], X.shape[1])
             c = self.concentration_net(xy).cpu().numpy().reshape(Y.shape[0], X.shape[1])
-        
+
+        #Create custom colormaps matching the paper
+
+    
+        # Concentration colormap (green to yellow to red)
+        colors_c = [(0.0, 0.8, 0.0),    # Green
+                    (0.8, 0.8, 0.0),    # Yellow
+                    (0.8, 0.0, 0.0)]    # Red
+        c_cmap = LinearSegmentedColormap.from_list("concentration_map", colors_c, N=256)
+    
+        # Potential colormap (red to yellow to cyan to blue)
+        colors_u = [(0.0, 0.0, 0.8),    # Blue (low values = 0)
+                (0.0, 0.8, 0.8),    # Cyan
+                (0.8, 0.8, 0.0),    # Yellow
+                (0.8, 0.0, 0.0)]    # Red (high values = 10)
+        u_cmap = LinearSegmentedColormap.from_list("potential_map", colors_u, N=256)
+    
+        plt.figure(figsize=(10, 5))
         # Plot concentration
         plt.subplot(1, 2, 1)
-        plt.contourf(X, Y, c, levels=20, cmap='plasma')
-        plt.colorbar(label='Concentration (c)')
+        plt.contourf(X, Y, c, levels=20, cmap=c_cmap)
+        plt.colorbar(label='Cocentration (c)')
         plt.xlabel('x')
         plt.ylabel('y')
         plt.title(f'Concentration - Step {step}')
 
         # Plot potential
-        plt.figure(figsize=(10, 5))
         plt.subplot(1, 2, 2)
-        plt.contourf(X, Y, u, levels=20, cmap='viridis')
+        plt.contourf(X, Y, u, levels=20, cmap=u_cmap)
         plt.colorbar(label='Potential (u)')
         plt.xlabel('x')
         plt.ylabel('y')
