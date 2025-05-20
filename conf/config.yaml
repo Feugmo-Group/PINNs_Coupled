@@ -9,6 +9,9 @@ defaults :
 
 jit: false
 
+optimizer:
+  lr: 1e-3
+  
 arch:
   fully_connected:
     layer_size: 20
@@ -31,4 +34,3 @@ batch_size:
   IC: 1024
   interior: 20000
   inference: 1024
-  data: 1024
