@@ -1,7 +1,7 @@
 """
 Coupled PNP equations
 
-reference: Poisson, Nernst, Planck, Gouws
+reference: Poisson, Nernst, Planck, Gouws, Runze et al.
 
 """
 
@@ -28,6 +28,6 @@ class PNP(PDE):
 
         #set equations
         self.equations = {}
-        #self.equations["poisson"] = (u.diff(x)).diff(x) + (u.diff(y)).diff(y) - c
-        self.equations["poisson"] = (u.diff(x)).diff(x) + (u.diff(y)).diff(y)
-        self.equations["NernstP"] = (c.diff(x,2)+c.diff(y,2))+(u.diff(x,2))+u.diff(y,2)
+        self.equations["poisson"] = u.diff(x,2) + u.diff(y,2)
+        self.equations["NernstP"] = (c.diff(x,2)+c.diff(y,2)) + c*(u.diff(x,2)+u.diff(y,2)) + (u.diff(x)*c.diff(x)) + (u.diff(y)*c.diff(y))
+

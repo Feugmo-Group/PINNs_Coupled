@@ -50,76 +50,72 @@ def run(cfg: PhysicsNeMoConfig) -> None:
     
     # make nodes to unroll graph on
     pnp = PNP()
-    pnp_net = instantiate_arch(
-        input_keys=[Key("x"), Key("y"), Key("t")],
-        output_keys = [Key("u"), Key("c")],
+    u_net = instantiate_arch(
+        input_keys=[Key("x"), Key("y")],
+        output_keys = [Key("u")],
         cfg=cfg.arch.fully_connected,
     )
-    nodes = pnp.make_nodes()+[pnp_net.make_node(name="pnp_network")]
 
-    ## add constraints and make geometry
-    x, y, t = Symbol("x"), Symbol("y"), Symbol("t")
+    c_net = instantiate_arch(
+        input_keys=[Key("x"), Key("y")],
+        output_keys = [Key("c")],
+        cfg=cfg.arch.fully_connected,
+    )
 
-    L = ((0,0), (1,1)) # Length of box
-    time = (0,8)
-    geo = Rectangle((0,0), (1,1))
-    time_range = {t: time}
+    nodes = pnp.make_nodes()+[u_net.make_node(name="potential_network")] + [c_net.make_node(name="concentration_network")]
+
+    # add constraints and make geometry
+    x, y = Symbol("x"), Symbol("y")
+
+    geo = Rectangle((0,0), (2,1))
 
     domain = Domain()
 
-    # initial conditions
-    #IC = PointwiseBoundaryConstraint(
-    #    nodes = nodes,
-    #    geometry = geo,
-    #    outvar = {"u": 1},
-    #    batch_size=cfg.batch_size.IC, ##NEED TO ADD TO CONFIG
-    #    parameterization={t:0},
-    #)
-    #domain.add_constraint(IC, "IC")
-
-    #boundary condition
-    BC = PointwiseBoundaryConstraint(
+    #boundary conditions
+    Left_BC = PointwiseBoundaryConstraint(
         nodes = nodes,
         geometry = geo,
-        outvar={"c": 1, "u":0},
+        outvar={"c": 1},
         criteria=~Eq(x, 0),
         batch_size=cfg.batch_size.BC, 
-        parameterization=time_range,
     )
-    domain.add_constraint(BC, "BC")
+    domain.add_constraint(Left_BC, "Left_BC")
 
-    #boundary condition
-    BC = PointwiseBoundaryConstraint(
+    Right_BC = PointwiseBoundaryConstraint(
         nodes = nodes,
         geometry = geo,
-        outvar={"c": 2, "u": 10},
+        outvar={"c": 2, "u": 0},
+        criteria=~Eq(x, 2),
+        batch_size=cfg.batch_size.BC, 
+    )
+    domain.add_constraint(Right_BC, "Right_BC")
+
+    Middle_BC = PointwiseBoundaryConstraint(
+        nodes = nodes,
+        geometry = geo,
+        outvar={"u": 10},
         criteria=~Eq(x, 1),
         batch_size=cfg.batch_size.BC, 
-        parameterization=time_range,
     )
-    domain.add_constraint(BC, "BC")
+    domain.add_constraint(Middle_BC, "Middle_BC")
 
-    #boundary condition
-    BC = PointwiseBoundaryConstraint(
+    Top_BC = PointwiseBoundaryConstraint(
         nodes = nodes,
         geometry = geo,
-        outvar={"u__y":0,"c__y":0},
+        outvar={"c__y":0,"u__y":0},
         criteria=~Eq(y, 1),
         batch_size=cfg.batch_size.BC, 
-        parameterization=time_range,
     )
-    domain.add_constraint(BC, "BC")    
+    domain.add_constraint(Top_BC, "Top_BC")    
 
-    #boundary condition
-    BC = PointwiseBoundaryConstraint(
+    Bottom_BC = PointwiseBoundaryConstraint(
         nodes = nodes,
         geometry = geo,
-        outvar={"u__y":0,"c__y":0},
+        outvar={"c__y":0,"u__y":0},
         criteria=~Eq(y, 0),
         batch_size=cfg.batch_size.BC, 
-        parameterization=time_range,
     )
-    domain.add_constraint(BC, "BC")    
+    domain.add_constraint(Bottom_BC, "Bottom_BC")    
 
     # interior
     interior = PointwiseInteriorConstraint(
@@ -127,28 +123,20 @@ def run(cfg: PhysicsNeMoConfig) -> None:
         geometry = geo,
         outvar={"poisson": 0, "NernstP": 0},
         batch_size = cfg.batch_size.interior,
-        parameterization=time_range,
     )
     domain.add_constraint(interior, "interior")
     
     vtk_obj = VTKUniformGrid(
-    bounds=[[0, 1], [0, 1]],  # Your box bounds
+    bounds=[[0, 2], [0, 1]],  # Your box bounds
     npoints=[100, 100],  # Grid resolution in each dimension
     export_map={"u": ["u"],"c":["c"]},  # Map output 'u' to 'potential' in VTK file
     )
-
-    deltaT = 0.001
-    t_max = 10
-    t = np.arange(0, t_max, deltaT)
-    t = np.expand_dims(t, axis=-1)
-    invar_numpy = {"t": t}    
     
     potential_inferencer = PointVTKInferencer(
         vtk_obj=vtk_obj,
         nodes=nodes,
         input_vtk_map={"x":"x","y":"y"},
         output_names=["u","c"],
-        invar=invar_numpy,
         requires_grad=True,
         batch_size=cfg.batch_size.inference,
     )    
