@@ -1,0 +1,29 @@
+defaults :
+  - physicsnemo_default
+  - arch:
+      - fully_connected
+  - optimizer : adam
+  - scheduler : tf_exponential_lr
+  - loss : lr_annealing
+  - _self_
+
+jit: false
+
+scheduler:
+  decay_rate: 1
+  decay_steps: 40000
+
+training:
+  rec_results_freq: 100
+  rec_inference_freq: 10
+  rec_monitor_freq: 5000
+  rec_constraint_freq: 10
+  max_steps : 200000
+
+batch_size:
+  BC: 1024
+  IC: 1024
+  interior: 1024
+  #interior_initial: 1024
+  inference: 1024
+  data: 1024
