@@ -47,7 +47,7 @@ class PNP():
     def __init__(self,cfg):
         self.cfg = cfg
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
+    
         # Create networks
         self.potential_net = FFN(cfg.arch.fully_connected, input_dim=2, output_dim=1).to(self.device)
         self.concentration_net = FFN(cfg.arch.fully_connected, input_dim=2, output_dim=1).to(self.device)
@@ -328,25 +328,11 @@ class PNP():
             c = self.concentration_net(xy).cpu().numpy().reshape(Y.shape[0], X.shape[1])
 
         #Create custom colormaps matching the paper
-
-    
-        # Concentration colormap (green to yellow to red)
-        colors_c = [(0.0, 0.8, 0.0),    # Green
-                    (0.8, 0.8, 0.0),    # Yellow
-                    (0.8, 0.0, 0.0)]    # Red
-        c_cmap = LinearSegmentedColormap.from_list("concentration_map", colors_c, N=256)
-    
-        # Potential colormap (red to yellow to cyan to blue)
-        colors_u = [(0.0, 0.0, 0.8),    # Blue (low values = 0)
-                (0.0, 0.8, 0.8),    # Cyan
-                (0.8, 0.8, 0.0),    # Yellow
-                (0.8, 0.0, 0.0)]    # Red (high values = 10)
-        u_cmap = LinearSegmentedColormap.from_list("potential_map", colors_u, N=256)
     
         plt.figure(figsize=(10, 5))
         # Plot concentration
         plt.subplot(1, 2, 1)
-        plt.contourf(X, Y, c, levels=20, cmap=c_cmap)
+        plt.contourf(X, Y, c, levels=20, cmap="jet")
         plt.colorbar(label='Cocentration (c)')
         plt.xlabel('x')
         plt.ylabel('y')
@@ -354,7 +340,7 @@ class PNP():
 
         # Plot potential
         plt.subplot(1, 2, 2)
-        plt.contourf(X, Y, u, levels=20, cmap=u_cmap)
+        plt.contourf(X, Y, u, levels=20, cmap="jet")
         plt.colorbar(label='Potential (u)')
         plt.xlabel('x')
         plt.ylabel('y')
